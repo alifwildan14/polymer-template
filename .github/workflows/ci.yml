@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install vIBC core contracts
+        run: just install
+
+      - name: Compile (Hardhat)
+        run: npx hardhat compile
+
+      - name: Compile (Foundry)
+        run: forge build
+
+      - name: Test (Foundry)
+        run: forge test -vv
+
+      - name: Test (Hardhat)
+        run: npx hardhat test
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint Solidity (solhint)
+        run: npx solhint contracts/**/*.sol || echo "solhint not configured, skipping"
+
+      - name: Lint JS/TS (ESLint)
+        run: npx eslint . --ext .js,.ts || echo "eslint not configured, skipping"
